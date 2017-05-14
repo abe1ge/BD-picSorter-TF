@@ -6,7 +6,7 @@ import numpy
 numClass = 2
 
 # simple model (set to True) or convolutional neural network (set to False)
-simpleModel = False
+simpleModel = True
 
 # dimensions of image (pixels)
 height = 100
@@ -122,94 +122,6 @@ if simpleModel:
     #softmax gives probability distribution across all classes
     y = tf.nn.softmax(tf.matmul(x, weight) + b)
 
-else:
-    '''
-    for convolutional neural network
-    '''
-    # similer to the one given in expert MNISt tenserflow tutorial
-
-    # functions to init small positive weights and biases
-    def weight_variable(shape):
-        initial = tf.constant(0.1, shape=shape)
-        return tf.Variable(initial)
-
-    def bias_variable(shape):
-        initial = tf.constant(0.1, shape=shape)
-        return tf.Variable(initial)
-
-    # set up "vanilla" versions of convolution and pooling // not really sure what this is doing, require more study
-    def conv2d(x, W):
-        return tf.nn.conv2d(x, W, strides=[1,1,1,1], padding='SAME')
-
-    def max_pool_2x2(x):
-        return tf.nn.max_pool(x,
-                              ksize=[1,2,2,1],
-                              strides=[1,2,2,1],
-                              padding='SAME')
-
-    print("Running Convolutional Neural Network Model")
-    nFeatures1 = 32
-    nFeatures2 = 64
-    nNeuronsfc = 1024
-
-    # use functions to init weights and biases
-    # nFeatures1 features for each patch of size 5x5
-    # SAME weights used for all patches
-    # 1 input channel
-    w_conv1 = weight_variable([5,5,1, nFeatures1])
-    b_conv1 = bias_variable([nFeatures1])
-
-    # reshape raw image data to 4D tensor. 2nd and 3rd indexes are Width, hight, fourth
-    # means 1 colour channel per pixel
-    x_image = tf.reshape(x, [-1, width, height, 1])
-
-    # hidden layer 1
-    # pool(convolution (Wx)+b)
-    # pool reduces each dim by factor of 2.
-    h_conv1 = tf.nn.relu(conv2d(x_image, w_conv1) + b_conv1)
-    h_pool1 = max_pool_2x2(h_conv1)
-
-    # similarly for second layer, with nFeatures2 features per 5x5 patch
-    # input is nFeatures1 (number of features output from previous layer)
-    w_conv2 = weight_variable([5, 5, nFeatures1, nFeatures2])
-    b_conv2 = bias_variable([nFeatures2])
-
-    h_conv2 = tf.nn.relu(conv2d(h_pool1, w_conv2) + b_conv2)
-    h_pool2 = max_pool_2x2(h_conv2)
-
-    '''
-     denseley connected layer. similar to above, but operating
-     on entire image(rather than patch) which has been reduced by a facter of 4
-     in each dimension
-     so use large number of neurons
-    '''
-
-    # check our dimensions are a multiple of 4
-    if (width % 4 or height % 4):
-        print("Error: width and height must be a multiple of 4")
-        sys.exit(1)
-
-    weight_fc1 = weight_variable([int((width / 4) * (height / 4) * nFeatures2), nNeuronsfc])
-    bias_fc1 = bias_variable([nNeuronsfc])
-
-    # flatten output from previous layer
-    h_pool2_flat = tf.reshape(h_pool2, [-1, int((width / 4) * (height / 4) * nFeatures2)])
-    h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, weight_fc1) + bias_fc1)
-
-    # reduce overfitting by applying dropout
-    # each neuron is kept with probability keep_prob
-    keep_prob = tf.placeholder(tf.float32)
-    h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
-
-    # create readout layer which outputs to numClass categories
-    weight_fc2 = weight_variable([nNeuronsfc, numClass])
-    bias_fc2 = bias_variable([numClass])
-
-    # define output calc (for each class) y = softmax(Wx+b)
-    # softmax gives probability distribution across all classes
-    # this is not run until later
-    y = tf.nn.softmax(tf.matmul(h_fc1_drop, weight_fc2) + bias_fc2)
-
 '''
 Before we start training we need to define the error, train step,
 correct prediction and accuracy 
@@ -249,8 +161,6 @@ for i in range(numSteps):
     # run the training step with feed of images
     if simpleModel:
         train_step.run(feed_dict={x: batch_Image_xs, y_: batch_ys})
-    else:
-        train_step.run(feed_dict={x: batch_Image_xs, y_: batch_ys, keep_prob: 0.5})
 
 
     if (i+1)%100 == 0: # then perfor validation
@@ -261,10 +171,6 @@ for i in range(numSteps):
         if simpleModel:
             train_accuracy = accuracy.eval(
                 feed_dict={x:testBatch_xs, y_:testBatch_ys}
-            )
-        else:
-            train_accuracy = accuracy.eval(
-                feed_dict={x:testBatch_xs, y_: testBatch_ys, keep_prob: 1.0}
             )
 
         print("step %d, training accuracy %g"%(i+1, train_accuracy))
